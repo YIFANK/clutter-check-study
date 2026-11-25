@@ -1,0 +1,414 @@
+<title>Clutter Check Study</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one centered column, one screen at a time; the arena is the only large object on the page. */
+:root {
+  --bg: #eef1f4; --surface: #ffffff; --ink: #17212b; --muted: #5a6775; --line: #d3dae1;
+  --cue: #0b63c4; --cue-soft: rgba(11, 99, 196, .14);
+  --obj: #b4530a; --obj-soft: rgba(180, 83, 10, .20);
+  --site-off: #8693a0;
+  --good: #1a7f4b; --bad: #c0362c;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161c; --surface: #1a212a; --ink: #e6ebf0; --muted: #98a4b1; --line: #313b47;
+  --cue: #5aa9ff; --cue-soft: rgba(90, 169, 255, .18);
+  --obj: #f0a45b; --obj-soft: rgba(240, 164, 91, .24);
+  --site-off: #6f7b88;
+  --good: #4cc38a; --bad: #ff7a6e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11161c; --surface: #1a212a; --ink: #e6ebf0; --muted: #98a4b1; --line: #313b47;
+  --cue: #5aa9ff; --cue-soft: rgba(90, 169, 255, .18);
+  --obj: #f0a45b; --obj-soft: rgba(240, 164, 91, .24);
+  --site-off: #6f7b88;
+  --good: #4cc38a; --bad: #ff7a6e; color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 48px; }
+[hidden] { display: none !important; }
+main { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+section { display: flex; flex-direction: column; gap: 16px; }
+h1 { font-size: 1.7rem; line-height: 1.2; font-weight: 600; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.2rem; font-weight: 600; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow { font-family: var(--font-mono); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+.small { font-size: .875rem; }
+ol.rules { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 10px; max-width: 65ch; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px 20px; }
+.legend div { display: flex; gap: 10px; align-items: center; min-width: 0; font-size: .9rem; }
+.legend svg { flex: none; width: 44px; height: 44px; }
+
+button { font: inherit; color: inherit; cursor: pointer; }
+.btn { background: var(--ink); color: var(--bg); border: 0; border-radius: 6px; padding: 10px 20px; font-weight: 500; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn:disabled { opacity: .4; cursor: default; }
+:focus-visible { outline: 2px solid var(--cue); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+.hud { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 20px; font-family: var(--font-mono); font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hud b { color: var(--ink); font-weight: 500; }
+#arena { display: block; width: 100%; height: auto; max-width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+#arena .hit { cursor: pointer; fill: transparent; }
+#arena .hit:hover + .dummy, #arena g.o.live:hover .region { stroke: var(--obj); stroke-width: .06; }
+#arena text { font-family: var(--font-mono); font-size: .32px; font-weight: 500; }
+.answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.answers button { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 10px; font-weight: 600; font-size: 1.05rem; display: flex; justify-content: center; align-items: baseline; gap: 10px; }
+.answers button:hover:not(:disabled) { border-color: var(--ink); }
+.answers button:disabled { opacity: .4; cursor: default; }
+kbd { font-family: var(--font-mono); font-size: .8rem; font-weight: 400; border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--muted); }
+#feedback { min-height: 3.2em; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+#feedback .ok { color: var(--good); font-weight: 600; }
+#feedback .no { color: var(--bad); font-weight: 600; }
+textarea { font: inherit; font-family: var(--font-mono); font-size: .8rem; width: 100%; box-sizing: border-box; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 10px; resize: vertical; }
+#strategy { font-family: var(--font-body); font-size: 1rem; }
+.panel { border: 1px dashed var(--line); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.status { font-family: var(--font-mono); font-size: .85rem; }
+</style>
+
+<main>
+  <section id="s-intro">
+    <span class="eyebrow">MIT 9.66 class project · about 6 minutes</span>
+    <h1>What needs checking before we act?</h1>
+    <p>You will see a table with six objects on it and decide whether a new disk fits at a marked spot. The objects' positions are only roughly known, and you can check up to two of them before you answer.</p>
+    <p class="muted small">Taking part is voluntary and you can stop at any time. The study records which objects you check, your answers and their timing. It does not ask for your name or any other personal details. A mouse or trackpad on a laptop works best.</p>
+    <div class="row"><button class="btn" id="b-begin">Begin</button></div>
+    <div class="panel" id="owner" hidden>
+      <span class="eyebrow">Researcher panel · only you see this</span>
+      <p class="status" id="owner-status">Loading saved responses…</p>
+      <div class="row">
+        <button class="btn ghost" id="b-export" disabled>Copy all responses as JSON</button>
+      </div>
+      <textarea id="owner-out" rows="5" readonly hidden aria-label="All responses as JSON"></textarea>
+      <p class="muted small">Add <code>#a</code> or <code>#b</code> to the link to fix which counterbalancing group a participant gets. Without it the group is random.</p>
+    </div>
+  </section>
+
+  <section id="s-instr" hidden>
+    <span class="eyebrow">How it works</span>
+    <h2>Will the disk fit?</h2>
+    <ol class="rules">
+      <li>A new disk has to go on the <b>highlighted site</b>. The table has two sites, and only the highlighted one matters on that trial.</li>
+      <li>Each object's dot is the <b>best guess</b> of where its center is. The shaded area around the dot shows where the center could really be. Every point in the shaded area is equally likely.</li>
+      <li>The disk <b>collides</b> if the true center of any object lies inside the dashed ring around the site. If no center is inside the ring, the disk <b>fits</b>.</li>
+      <li>Before answering you may <b>check up to two objects</b> by clicking them. A check shows that object's exact position. You can also answer with one check or none.</li>
+      <li>Then answer <b>Fits</b> (<kbd>F</kbd>) or <b>Collides</b> (<kbd>J</kbd>). About half of the trials fit.</li>
+    </ol>
+    <div class="legend" aria-label="Legend">
+      <div><svg viewBox="-2.4 -2.4 4.8 4.8"><circle r="2" fill="none" stroke="var(--cue)" stroke-width=".12" stroke-dasharray=".3 .22"/><circle r="1" fill="var(--cue-soft)" stroke="var(--cue)" stroke-width=".14"/></svg><span>Highlighted site with its dashed collision ring</span></div>
+      <div><svg viewBox="-2.4 -2.4 4.8 4.8"><circle r="1.7" fill="var(--obj-soft)"/><circle r=".24" fill="var(--obj)"/></svg><span>Object: best-guess dot and the area its center could be in</span></div>
+      <div><svg viewBox="-2.4 -2.4 4.8 4.8"><circle r="1.7" fill="var(--obj-soft)" opacity=".4"/><circle cx=".7" cy="-.5" r="1.4" fill="var(--obj-soft)" stroke="var(--obj)" stroke-width=".14"/><circle cx=".7" cy="-.5" r=".24" fill="var(--obj)"/></svg><span>Checked object: its exact position and outline</span></div>
+    </div>
+    <p>You start with 3 practice trials that show the answer afterwards. The 24 real trials give no feedback.</p>
+    <div class="row"><button class="btn" id="b-practice">Start practice</button></div>
+  </section>
+
+  <section id="s-trial" hidden>
+    <div class="hud"><span id="hud-trial"></span><span id="hud-checks"></span></div>
+    <svg id="arena" viewBox="0 0 20 12" role="group" aria-label="Table with two placement sites and six objects"></svg>
+    <div class="answers">
+      <button id="b-fits">Fits <kbd>F</kbd></button>
+      <button id="b-collides">Collides <kbd>J</kbd></button>
+    </div>
+    <div id="feedback"></div>
+  </section>
+
+  <section id="s-ready" hidden>
+    <span class="eyebrow">Practice done</span>
+    <h2>24 trials, no feedback</h2>
+    <p>From here on you will not see whether your answer was right. Take the checks you think you need, then answer.</p>
+    <div class="row"><button class="btn" id="b-main">Start</button></div>
+  </section>
+
+  <section id="s-debrief" hidden>
+    <span class="eyebrow">Last question · optional</span>
+    <h2>How did you decide which objects to check?</h2>
+    <textarea id="strategy" rows="4" maxlength="1000" aria-label="How did you decide which objects to check?"></textarea>
+    <div class="row"><button class="btn" id="b-finish">Finish</button></div>
+  </section>
+
+  <section id="s-done" hidden>
+    <span class="eyebrow">Finished</span>
+    <h2 id="done-title">Thank you</h2>
+    <p id="done-msg"></p>
+    <div id="fallback" hidden>
+      <div class="row"><button class="btn" id="b-copy">Copy response code</button><span class="status" id="copy-status"></span></div>
+      <textarea id="code" rows="6" readonly aria-label="Your response code"></textarea>
+    </div>
+  </section>
+</main>
+
+<script id="gen">
+/* ---------- Stimulus generator (deterministic; units: collision boundary = 2.0) ---------- */
+const W = 20, H = 12, BOUND = 2.0, R_OBJ = 1.0;
+const SITES = { L: { x: 5.5, y: 6 }, R: { x: 14.5, y: 6 } };
+const TYPES = ['critical', 'congruent', 'critical2', 'congruent2'];
+// D = near decoy that cannot collide, I/In/I2 = region crosses the boundary, F = far filler
+const ROLES = { critical: ['D', 'I', 'F'], congruent: ['In', 'F', 'F'], critical2: ['D', 'I', 'I2'], congruent2: ['In', 'I2', 'F'] };
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function roleParams(role, U) {
+  let d, u;
+  if (role === 'D') { d = U(2.3, 2.42); u = U(0.09, 0.13); }
+  else if (role === 'I') { d = U(2.75, 2.95); u = d - U(1.45, 1.7); }
+  else if (role === 'In') { d = U(1.9, 2.3); u = U(0.6, 0.95); }
+  else if (role === 'I2') { d = U(2.95, 3.2); u = d - U(1.5, 1.75); }
+  else { d = U(3.7, 4.2); u = U(0.3, 1.0); }
+  return { d, u };
+}
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+function makeLayout(id, seed, leftType, rightType, leftCollide, rightCollide, leftBy, rightBy) {
+  const rnd = mulberry32(seed), U = (a, b) => a + (b - a) * rnd();
+  for (let attempt = 0; attempt < 4000; attempt++) {
+    const objs = []; let ok = true;
+    for (const side of ['L', 'R']) {
+      const type = side === 'L' ? leftType : rightType, site = SITES[side], other = SITES[side === 'L' ? 'R' : 'L'];
+      for (const role of ROLES[type]) {
+        const { d, u } = roleParams(role, U); let placed = null;
+        for (let k = 0; k < 120 && !placed; k++) {
+          const th = U(0, 2 * Math.PI), e = { x: site.x + d * Math.cos(th), y: site.y + d * Math.sin(th) };
+          if (e.x - u < 0.5 || e.x + u > W - 0.5 || e.y - u < 0.5 || e.y + u > H - 0.5) continue;
+          if (dist(e, other) - u < 2.4) continue;
+          if (objs.some(o => dist(e, { x: o.ex, y: o.ey }) < Math.max(u, 0.4) + Math.max(o.u, 0.4) + 0.25)) continue;
+          placed = e;
+        }
+        if (!placed) { ok = false; break; }
+        objs.push({ side, role, d, u, ex: placed.x, ey: placed.y });
+      }
+      if (!ok) break;
+    }
+    if (!ok) continue;
+    // True centers: uniform in each region, conditioned on the designed outcome at the object's own site.
+    for (let tk = 0; tk < 60; tk++) {
+      let good = true;
+      for (const o of objs) {
+        const site = SITES[o.side], collide = o.side === 'L' ? leftCollide : rightCollide, by = o.side === 'L' ? leftBy : rightBy;
+        const wantIn = collide && o.role === by; let t = null;
+        for (let k = 0; k < 3000 && !t; k++) {
+          const r = o.u * Math.sqrt(rnd()), th = U(0, 2 * Math.PI), c = { x: o.ex + r * Math.cos(th), y: o.ey + r * Math.sin(th) }, ds = dist(c, site);
+          if (wantIn ? ds < BOUND - 0.15 : ds > BOUND + 0.15) t = c;
+        }
+        if (!t) { good = false; break; }
+        o.tx = t.x; o.ty = t.y;
+      }
+      if (!good) break;
+      let sep = true;
+      for (let i = 0; i < objs.length && sep; i++) for (let j = i + 1; j < objs.length; j++) if (Math.hypot(objs[i].tx - objs[j].tx, objs[i].ty - objs[j].ty) < 2 * R_OBJ) { sep = false; break; }
+      if (!sep) continue;
+      const r3 = v => Math.round(v * 1000) / 1000;
+      // shuffle so object ids carry no role information
+      for (let i = objs.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [objs[i], objs[j]] = [objs[j], objs[i]]; }
+      return { id, leftType, rightType, objects: objs.map((o, i) => ({ id: i, side: o.side, role: o.role, u: r3(o.u), ex: r3(o.ex), ey: r3(o.ey), tx: r3(o.tx), ty: r3(o.ty) })) };
+    }
+  }
+  throw new Error('layout generation failed: ' + id);
+}
+function collides(layout, cue) { const s = SITES[cue]; return layout.objects.some(o => Math.hypot(o.tx - s.x, o.ty - s.y) < BOUND); }
+function colliderRole(type, k) { return (type === 'critical2' || type === 'congruent2') ? (k % 4 >= 2 ? 'I2' : (type === 'critical2' ? 'I' : 'In')) : (type === 'critical' ? 'I' : 'In'); }
+function buildLayouts() {
+  const out = [];
+  for (let i = 0; i < 24; i++) {
+    const lt = TYPES[i % 4], rt = TYPES[(i + 2) % 4], k = Math.floor(i / 4);
+    out.push(makeLayout('m' + String(i).padStart(2, '0'), 9660 + i * 7919, lt, rt, k % 2 === 0, k % 2 === 1, colliderRole(lt, k), colliderRole(rt, k)));
+  }
+  return out;
+}
+function buildPractice() {
+  return [
+    { L: makeLayout('p0', 4101, 'congruent', 'critical', true, false, 'In', 'I'), cue: 'L' },
+    { L: makeLayout('p1', 4202, 'congruent2', 'critical', false, false, 'In', 'I'), cue: 'R' },
+    { L: makeLayout('p2', 4303, 'critical2', 'congruent', true, true, 'I2', 'In'), cue: 'L' },
+  ];
+}
+// Counterbalancing: group 0 gets the left cue on even layouts, group 1 on odd ones.
+function cueFor(i, group) { return (i + group) % 2 === 0 ? 'L' : 'R'; }
+</script>
+
+<script>
+/* ---------- Experiment ---------- */
+const SUBMIT_URL = window.STUDY_API || ''; // set in config.js on the self-hosted copy
+const MAX_CHECKS = 2;
+const $ = id => document.getElementById(id);
+const screens = ['s-intro', 's-instr', 's-trial', 's-ready', 's-debrief', 's-done'];
+function show(id) { screens.forEach(s => { $(s).hidden = s !== id; }); window.scrollTo(0, 0); }
+
+const hash = (location.hash || '').toLowerCase();
+const group = hash === '#a' ? 0 : hash === '#b' ? 1 : (Math.random() < 0.5 ? 0 : 1);
+const session = {
+  v: 1, sid: Math.random().toString(36).slice(2, 10), group, groupSource: (hash === '#a' || hash === '#b') ? 'link' : 'random',
+  startedAt: new Date().toISOString(), finishedAt: null, complete: false,
+  viewport: { w: innerWidth, h: innerHeight }, coarsePointer: matchMedia('(pointer: coarse)').matches,
+  practice: [], trials: [], strategy: ''
+};
+
+let queue = [], idx = 0, cur = null, mainTotal = 0;
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function draw() {
+  const { L, cue } = cur.item, fb = cur.phase === 'fb', showObjs = cur.phase !== 'cue';
+  let s = '';
+  for (const side of ['L', 'R']) {
+    const p = SITES[side], on = side === cue, col = on ? 'var(--cue)' : 'var(--site-off)';
+    s += `<circle cx="${p.x}" cy="${p.y}" r="${BOUND}" fill="none" stroke="${col}" stroke-width="${on ? .06 : .04}" stroke-dasharray=".22 .16" opacity="${on ? 1 : .6}"/>`;
+    s += `<circle cx="${p.x}" cy="${p.y}" r="1" fill="${on ? 'var(--cue-soft)' : 'none'}" stroke="${col}" stroke-width="${on ? .08 : .04}" opacity="${on ? 1 : .6}"/>`;
+    if (on) s += `<text x="${p.x}" y="${p.y + .15}" text-anchor="middle" fill="var(--cue)">NEW DISK</text>`;
+  }
+  if (showObjs) {
+    const objs = L.objects.slice().sort((a, b) => b.u - a.u), site = SITES[cue];
+    const canCheck = cur.phase === 'go' && cur.reveals.length < MAX_CHECKS;
+    for (const o of objs) {
+      const seen = cur.reveals.some(r => r.o === o.id), live = canCheck && !seen;
+      const hits = Math.hypot(o.tx - site.x, o.ty - site.y) < BOUND;
+      s += `<g class="o${live ? ' live' : ''}">`;
+      s += `<circle class="region" cx="${o.ex}" cy="${o.ey}" r="${o.u}" fill="var(--obj-soft)" opacity="${seen || fb ? .35 : 1}"/>`;
+      if (seen || fb) {
+        const c = fb && hits ? 'var(--bad)' : 'var(--obj)';
+        s += `<line x1="${o.ex}" y1="${o.ey}" x2="${o.tx}" y2="${o.ty}" stroke="${c}" stroke-width=".03"/>`;
+        s += `<circle cx="${o.tx}" cy="${o.ty}" r="${R_OBJ}" fill="${seen ? 'var(--obj-soft)' : 'none'}" stroke="${c}" stroke-width="${seen || (fb && hits) ? .07 : .035}"/>`;
+        s += `<circle cx="${o.tx}" cy="${o.ty}" r=".11" fill="${c}"/>`;
+        s += `<circle cx="${o.ex}" cy="${o.ey}" r=".07" fill="none" stroke="var(--obj)" stroke-width=".03"/>`;
+      } else {
+        s += `<circle cx="${o.ex}" cy="${o.ey}" r=".11" fill="var(--obj)"/>`;
+      }
+      if (live) s += `<circle class="hit" data-o="${o.id}" tabindex="0" role="button" aria-label="Check object" cx="${o.ex}" cy="${o.ey}" r="${Math.max(o.u, .5)}"/>`;
+      s += '</g>';
+    }
+  }
+  $('arena').innerHTML = s;
+  const n = cur.item.practice ? `Practice ${idx + 1} / ${queue.length}` : `Trial ${idx + 1} / ${queue.length}`;
+  $('hud-trial').innerHTML = `<b>${n}</b>`;
+  $('hud-checks').innerHTML = `Checks left <b>${MAX_CHECKS - cur.reveals.length}</b>`;
+  const off = cur.phase !== 'go';
+  $('b-fits').disabled = off; $('b-collides').disabled = off;
+}
+
+function startTrial() {
+  cur = { item: queue[idx], reveals: [], t0: 0, phase: 'cue' };
+  $('feedback').textContent = '';
+  draw();
+  setTimeout(() => { cur.phase = 'go'; cur.t0 = performance.now(); draw(); }, 700);
+}
+
+function check(oid) {
+  if (!cur || cur.phase !== 'go' || cur.reveals.length >= MAX_CHECKS || cur.reveals.some(r => r.o === oid)) return;
+  cur.reveals.push({ o: oid, t: Math.round(performance.now() - cur.t0) });
+  draw();
+}
+
+function respond(answer) {
+  if (!cur || cur.phase !== 'go') return;
+  const rt = Math.round(performance.now() - cur.t0), { L, cue, practice } = cur.item, site = SITES[cue];
+  const truth = collides(L, cue) ? 'collides' : 'fits';
+  const sorted = L.objects.slice().sort((a, b) => Math.hypot(a.ex - site.x, a.ey - site.y) - Math.hypot(b.ex - site.x, b.ey - site.y));
+  const rec = {
+    order: idx, layout: L.id, cue, cuedType: cue === 'L' ? L.leftType : L.rightType, leftType: L.leftType, rightType: L.rightType,
+    truth, response: answer, correct: answer === truth, rt, nChecks: cur.reveals.length,
+    checks: cur.reveals.map(r => { const o = L.objects.find(x => x.id === r.o); return { o: o.id, t: r.t, role: o.role, side: o.side, onCuedSide: o.side === cue, nearestRank: sorted.indexOf(o) + 1, crossesCuedBoundary: Math.abs(Math.hypot(o.ex - site.x, o.ey - site.y) - BOUND) < o.u }; }),
+    objects: L.objects
+  };
+  (practice ? session.practice : session.trials).push(rec);
+  if (practice) {
+    cur.phase = 'fb'; draw();
+    const fbEl = $('feedback'); fbEl.textContent = '';
+    const p = document.createElement('p'), b = document.createElement('button');
+    const verdict = document.createElement('span'); verdict.className = rec.correct ? 'ok' : 'no'; verdict.textContent = rec.correct ? 'Correct. ' : 'Not quite. ';
+    p.append(verdict, truth === 'collides' ? 'The disk collides: the object outlined in red has its center inside the ring.' : 'The disk fits: no object has its center inside the ring.');
+    b.className = 'btn'; b.textContent = 'Continue'; b.onclick = next;
+    fbEl.append(p, b); b.focus();
+  } else {
+    cur.phase = 'wait'; draw();
+    if ((idx + 1) % 6 === 0) save();
+    setTimeout(next, 350);
+  }
+}
+
+function next() {
+  idx++;
+  if (idx < queue.length) return startTrial();
+  cur = null;
+  if (queue[0].practice) show('s-ready'); else show('s-debrief');
+}
+
+$('arena').addEventListener('click', e => { const t = e.target.closest('[data-o]'); if (t) check(+t.dataset.o); });
+$('arena').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { const t = e.target.closest('[data-o]'); if (t) { e.preventDefault(); check(+t.dataset.o); } } });
+$('b-fits').onclick = () => respond('fits');
+$('b-collides').onclick = () => respond('collides');
+document.addEventListener('keydown', e => {
+  if ($('s-trial').hidden || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === 'f') respond('fits'); else if (k === 'j') respond('collides');
+});
+
+$('b-begin').onclick = () => show('s-instr');
+$('b-practice').onclick = () => { queue = buildPractice().map(p => ({ ...p, practice: true })); idx = 0; show('s-trial'); startTrial(); };
+$('b-main').onclick = () => {
+  queue = shuffle(buildLayouts().map((L, i) => ({ L, cue: cueFor(i, group), practice: false })));
+  idx = 0; show('s-trial'); startTrial();
+};
+$('b-finish').onclick = async () => {
+  session.strategy = $('strategy').value.slice(0, 1000);
+  session.finishedAt = new Date().toISOString(); session.complete = true;
+  $('b-finish').disabled = true;
+  show('s-done');
+  $('done-msg').textContent = 'Saving your responses…';
+  const ok = await save();
+  if (ok) { $('done-msg').textContent = 'Your responses are saved. You can close this page.'; return; }
+  $('done-title').textContent = 'One last step';
+  $('done-msg').textContent = 'Your responses could not be saved automatically. Please copy the code below and send it to the person who gave you this link.';
+  $('code').value = JSON.stringify(session);
+  $('fallback').hidden = false;
+};
+$('b-copy').onclick = async () => {
+  const ta = $('code');
+  try { await navigator.clipboard.writeText(ta.value); $('copy-status').textContent = 'Copied'; }
+  catch (_) { ta.focus(); ta.select(); $('copy-status').textContent = 'Selected. Press Ctrl/Cmd+C to copy.'; }
+};
+
+/* ---------- Saving ---------- */
+let dbP = null, uidP = null, chain = Promise.resolve(false);
+async function capability(name) { try { return window.claude && window.claude.use ? await window.claude.use(name) : null; } catch (_) { return null; } }
+function initStore() { dbP = capability('db'); uidP = capability('user').then(u => u ? u.id() : null).catch(() => null); }
+async function writeOnce() {
+  const body = JSON.parse(JSON.stringify(session));
+  if (!(window.claude && window.claude.use) && SUBMIT_URL) {
+    try { const r = await fetch(SUBMIT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); return r.ok; } catch (_) { return false; }
+  }
+  const [db, uid] = await Promise.all([dbP, uidP]);
+  if (!db || !uid) return false;
+  const ref = db.doc('responses/' + uid);
+  try { await ref.set(body); return true; }
+  catch (e) {
+    if (!e || e.code !== 'unavailable') return false;
+    await new Promise(r => setTimeout(r, 600 + Math.random() * 600));
+    try { await ref.set(body); return true; } catch (_) { return false; }
+  }
+}
+function save() { chain = chain.then(writeOnce, writeOnce); return chain; }
+
+/* ---------- Researcher panel ---------- */
+async function ownerPanel() {
+  const user = await capability('user');
+  if (!user || !(await user.isOwner())) return;
+  $('owner').hidden = false;
+  const db = await dbP, st = $('owner-status');
+  if (!db) { st.textContent = 'Saved responses are not available in this view.'; return; }
+  const timer = setTimeout(() => { st.textContent = 'Saved responses cannot be reached yet.'; }, 10000);
+  try {
+    const snap = await db.collection('responses').get();
+    clearTimeout(timer);
+    const rows = snap.docs.map(d => d.data()).filter(Boolean);
+    const done = rows.filter(r => r.complete).length;
+    const a = rows.filter(r => r.complete && r.group === 0).length;
+    st.textContent = `${rows.length} saved (${done} complete: ${a} in group A, ${done - a} in group B)`;
+    $('b-export').disabled = rows.length === 0;
+    $('b-export').onclick = async () => {
+      const ta = $('owner-out'); ta.value = JSON.stringify(rows); ta.hidden = false;
+      try { await navigator.clipboard.writeText(ta.value); st.textContent = 'Copied ' + rows.length + ' responses.'; } catch (_) { ta.focus(); ta.select(); }
+    };
+  } catch (_) { clearTimeout(timer); st.textContent = 'Saved responses could not be loaded.'; }
+}
+
+initStore();
+ownerPanel();
+</script>
