@@ -114,7 +114,7 @@ textarea { font: inherit; font-family: var(--font-mono); font-size: .8rem; width
   <section id="s-ready" hidden>
     <span class="eyebrow">Practice done</span>
     <h2>24 trials, no feedback</h2>
-    <p>From here on you will not see whether your answer was right. Take the checks you think you need, then answer.</p>
+    <p>From here on you will not see whether your answer was right. Take the checks you think you need, then answer. Try to answer as accurately as you can. There is no time limit.</p>
     <div class="row"><button class="btn" id="b-main">Start</button></div>
   </section>
 
@@ -276,7 +276,7 @@ const TUT = [
       ? `<circle cx="${TUT_OBJ.ex}" cy="${TUT_OBJ.ey}" r="${TUT_OBJ.u}" fill="var(--obj-soft)" opacity=".35"/><line x1="${TUT_OBJ.ex}" y1="${TUT_OBJ.ey}" x2="${TUT_OBJ.tx}" y2="${TUT_OBJ.ty}" stroke="var(--bad)" stroke-width=".03"/>` + bodySVG(TUT_OBJ.tx, TUT_OBJ.ty, 'var(--bad)')
       : `<g class="o live">${guessSVG(TUT_OBJ)}<circle class="hit" data-t="1" tabindex="0" role="button" aria-label="Check object" cx="${TUT_OBJ.ex}" cy="${TUT_OBJ.ey}" r="${TUT_OBJ.u}"/></g><text class="lab" x="8.6" y="4.5" fill="var(--obj)">click me</text>`) },
   { title: 'Six objects, only two checks',
-    text: 'A real trial looks like this. There are six objects and you may check at most two of them, so choose which ones. Then answer Fits (F key) or Collides (J key). You can also answer with one check or none. About half of the trials fit.',
+    text: 'A real trial looks like this. There are six objects and you may check at most two of them, so choose which ones. Then answer Fits (F key) or Collides (J key). You can also answer with one check or none. About half of the trials fit. Try to answer as accurately as you can. There is no time limit.',
     last: true,
     svg: () => { const L = buildPractice()[1].L; return sitesSVG('R', true) + L.objects.slice().sort((a, b) => b.u - a.u).map(guessSVG).join(''); } },
 ];
