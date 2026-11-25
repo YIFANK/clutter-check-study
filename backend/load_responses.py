@@ -10,5 +10,6 @@ with open(sys.argv[1], newline="", encoding="utf-8") as f:
     rows = list(csv.reader(f))
 for row in rows[1:]:
     session = json.loads("".join(row[5:]))
-    last[session["sid"]] = session
+    if not str(session["sid"]).startswith("TEST"):  # rows written while testing the endpoint
+        last[session["sid"]] = session
 json.dump(list(last.values()), sys.stdout)
