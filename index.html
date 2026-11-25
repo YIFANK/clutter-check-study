@@ -50,10 +50,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 .hud { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 20px; font-family: var(--font-mono); font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .hud b { color: var(--ink); font-weight: 500; }
-#arena { display: block; width: 100%; height: auto; max-width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
-#arena .hit { cursor: pointer; fill: transparent; }
-#arena .hit:hover + .dummy, #arena g.o.live:hover .region { stroke: var(--obj); stroke-width: .06; }
-#arena text { font-family: var(--font-mono); font-size: .32px; font-weight: 500; }
+.arena { display: block; width: 100%; height: auto; max-width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.arena .hit { cursor: pointer; fill: transparent; }
+.arena g.o.live:hover .region { stroke: var(--obj); stroke-width: .06; }
+.arena text { font-family: var(--font-mono); font-size: .32px; font-weight: 500; }
+.arena text.lab { font-family: var(--font-body); font-size: .46px; font-weight: 500; }
+.prompt { font-size: .95rem; color: var(--muted); }
+#tut-text { min-height: 4.7em; font-size: 1.05rem; }
+.dots { display: flex; gap: 6px; align-items: center; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.dots i.on { background: var(--ink); }
 .answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .answers button { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 10px; font-weight: 600; font-size: 1.05rem; display: flex; justify-content: center; align-items: baseline; gap: 10px; }
 .answers button:hover:not(:disabled) { border-color: var(--ink); }
@@ -87,27 +93,17 @@ textarea { font: inherit; font-family: var(--font-mono); font-size: .8rem; width
   </section>
 
   <section id="s-instr" hidden>
-    <span class="eyebrow">How it works</span>
-    <h2>Will the disk fit?</h2>
-    <ol class="rules">
-      <li>A new disk has to go on the <b>highlighted site</b>. The table has two sites, and only the highlighted one matters on that trial.</li>
-      <li>Each object's dot is the <b>best guess</b> of where its center is. The shaded area around the dot shows where the center could really be. Every point in the shaded area is equally likely.</li>
-      <li>The disk <b>collides</b> if the true center of any object lies inside the dashed ring around the site. If no center is inside the ring, the disk <b>fits</b>.</li>
-      <li>Before answering you may <b>check up to two objects</b> by clicking them. A check shows that object's exact position. You can also answer with one check or none.</li>
-      <li>Then answer <b>Fits</b> (<kbd>F</kbd>) or <b>Collides</b> (<kbd>J</kbd>). About half of the trials fit.</li>
-    </ol>
-    <div class="legend" aria-label="Legend">
-      <div><svg viewBox="-2.4 -2.4 4.8 4.8"><circle r="2" fill="none" stroke="var(--cue)" stroke-width=".12" stroke-dasharray=".3 .22"/><circle r="1" fill="var(--cue-soft)" stroke="var(--cue)" stroke-width=".14"/></svg><span>Highlighted site with its dashed collision ring</span></div>
-      <div><svg viewBox="-2.4 -2.4 4.8 4.8"><circle r="1.7" fill="var(--obj-soft)"/><circle r=".24" fill="var(--obj)"/></svg><span>Object: best-guess dot and the area its center could be in</span></div>
-      <div><svg viewBox="-2.4 -2.4 4.8 4.8"><circle r="1.7" fill="var(--obj-soft)" opacity=".4"/><circle cx=".7" cy="-.5" r="1.4" fill="var(--obj-soft)" stroke="var(--obj)" stroke-width=".14"/><circle cx=".7" cy="-.5" r=".24" fill="var(--obj)"/></svg><span>Checked object: its exact position and outline</span></div>
-    </div>
-    <p>You start with 3 practice trials that show the answer afterwards. The 24 real trials give no feedback.</p>
-    <div class="row"><button class="btn" id="b-practice">Start practice</button></div>
+    <div class="row" style="justify-content: space-between"><span class="eyebrow" id="tut-count"></span><span class="dots" id="tut-dots" aria-hidden="true"></span></div>
+    <h2 id="tut-title"></h2>
+    <svg id="tut" class="arena" viewBox="0 0 20 12" role="img" aria-label="Walkthrough illustration"></svg>
+    <p id="tut-text"></p>
+    <div class="row"><button class="btn ghost" id="tut-back">Back</button><button class="btn" id="tut-next">Next</button></div>
   </section>
 
   <section id="s-trial" hidden>
     <div class="hud"><span id="hud-trial"></span><span id="hud-checks"></span></div>
-    <svg id="arena" viewBox="0 0 20 12" role="group" aria-label="Table with two placement sites and six objects"></svg>
+    <p class="prompt" id="prompt">Will the new disk fit? Click up to two objects to see where they really are, then answer.</p>
+    <svg id="arena" class="arena" viewBox="0 0 20 12" role="group" aria-label="Table with two placement sites and six objects"></svg>
     <div class="answers">
       <button id="b-fits">Fits <kbd>F</kbd></button>
       <button id="b-collides">Collides <kbd>J</kbd></button>
@@ -245,15 +241,61 @@ const session = {
 let queue = [], idx = 0, cur = null, mainTotal = 0;
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
-function draw() {
-  const { L, cue } = cur.item, fb = cur.phase === 'fb', showObjs = cur.phase !== 'cue';
+function sitesSVG(cue, ring) {
   let s = '';
   for (const side of ['L', 'R']) {
     const p = SITES[side], on = side === cue, col = on ? 'var(--cue)' : 'var(--site-off)';
-    s += `<circle cx="${p.x}" cy="${p.y}" r="${BOUND}" fill="none" stroke="${col}" stroke-width="${on ? .06 : .04}" stroke-dasharray=".22 .16" opacity="${on ? 1 : .6}"/>`;
+    if (ring) s += `<circle cx="${p.x}" cy="${p.y}" r="${BOUND}" fill="none" stroke="${col}" stroke-width="${on ? .06 : .04}" stroke-dasharray=".22 .16" opacity="${on ? 1 : .6}"/>`;
     s += `<circle cx="${p.x}" cy="${p.y}" r="1" fill="${on ? 'var(--cue-soft)' : 'none'}" stroke="${col}" stroke-width="${on ? .08 : .04}" opacity="${on ? 1 : .6}"/>`;
     if (on) s += `<text x="${p.x}" y="${p.y + .15}" text-anchor="middle" fill="var(--cue)">NEW DISK</text>`;
   }
+  return s;
+}
+
+/* ---------- Walkthrough ---------- */
+const TUT_OBJ = { ex: 7.3, ey: 4.4, u: 1.0, tx: 6.75, ty: 4.85 };
+let tutStep = 0, tutChecked = false;
+const bodySVG = (x, y, col) => `<circle cx="${x}" cy="${y}" r="${R_OBJ}" fill="var(--obj-soft)" stroke="${col}" stroke-width=".07"/><circle cx="${x}" cy="${y}" r=".11" fill="${col}"/>`;
+const guessSVG = o => `<circle class="region" cx="${o.ex}" cy="${o.ey}" r="${o.u}" fill="var(--obj-soft)"/><circle cx="${o.ex}" cy="${o.ey}" r=".11" fill="var(--obj)"/>`;
+const TUT = [
+  { title: 'A new disk is about to be placed',
+    text: 'The table has two spots. On every trial one of them is highlighted in blue: that is where the new disk will go. The grey spot does not matter on that trial.',
+    svg: () => sitesSVG('L', false) },
+  { title: 'Will it bump into something?',
+    text: 'Other objects are already on the table. They are disks of the same size. If an object\'s center is inside the dashed ring, it overlaps the new disk and the disk collides. If every object\'s center is outside the ring, the disk fits.',
+    svg: () => sitesSVG('L', true) + bodySVG(6.6, 4.9, 'var(--bad)') + bodySVG(3.2, 8.0, 'var(--obj)')
+      + '<text class="lab" x="7.9" y="4.0" fill="var(--bad)">center inside the ring: collides</text><text class="lab" x="4.5" y="8.15" fill="var(--obj)">center outside: no problem</text>' },
+  { title: 'You only have a rough idea where objects are',
+    text: 'You will not see the objects themselves. For each one you see a dot, which is the best guess of its center, and a shaded area. The real center is somewhere inside the shaded area, and every point in it is equally likely. A bigger shaded area means a less certain position.',
+    svg: () => sitesSVG('L', true) + guessSVG(TUT_OBJ)
+      + '<text class="lab" x="8.6" y="2.9" fill="var(--obj)">dot: best guess</text><text class="lab" x="8.6" y="3.6" fill="var(--obj)">shaded: where the center could be</text>' },
+  { title: 'You can check an object',
+    text: () => tutChecked ? 'A check shows where the object really is. This one turned out to have its center inside the ring, so here the disk would collide.' : 'Click the object to check it.',
+    needsCheck: true,
+    svg: () => sitesSVG('L', true) + (tutChecked
+      ? `<circle cx="${TUT_OBJ.ex}" cy="${TUT_OBJ.ey}" r="${TUT_OBJ.u}" fill="var(--obj-soft)" opacity=".35"/><line x1="${TUT_OBJ.ex}" y1="${TUT_OBJ.ey}" x2="${TUT_OBJ.tx}" y2="${TUT_OBJ.ty}" stroke="var(--bad)" stroke-width=".03"/>` + bodySVG(TUT_OBJ.tx, TUT_OBJ.ty, 'var(--bad)')
+      : `<g class="o live">${guessSVG(TUT_OBJ)}<circle class="hit" data-t="1" tabindex="0" role="button" aria-label="Check object" cx="${TUT_OBJ.ex}" cy="${TUT_OBJ.ey}" r="${TUT_OBJ.u}"/></g><text class="lab" x="8.6" y="4.5" fill="var(--obj)">click me</text>`) },
+  { title: 'Six objects, only two checks',
+    text: 'A real trial looks like this. There are six objects and you may check at most two of them, so choose which ones. Then answer Fits (F key) or Collides (J key). You can also answer with one check or none. About half of the trials fit.',
+    last: true,
+    svg: () => { const L = buildPractice()[1].L; return sitesSVG('R', true) + L.objects.slice().sort((a, b) => b.u - a.u).map(guessSVG).join(''); } },
+];
+function tutDraw() {
+  const st = TUT[tutStep];
+  $('tut-count').textContent = `How it works · ${tutStep + 1} of ${TUT.length}`;
+  $('tut-dots').innerHTML = TUT.map((_, i) => `<i class="${i === tutStep ? 'on' : ''}"></i>`).join('');
+  $('tut-title').textContent = st.title;
+  $('tut-text').textContent = typeof st.text === 'function' ? st.text() : st.text;
+  $('tut').innerHTML = st.svg();
+  $('tut-back').disabled = tutStep === 0;
+  $('tut-next').textContent = st.last ? 'Start 3 practice trials' : 'Next';
+  $('tut-next').disabled = !!st.needsCheck && !tutChecked;
+}
+function tutCheck(e) { if (e.target.closest('[data-t]')) { tutChecked = true; tutDraw(); $('tut-next').focus(); } }
+
+function draw() {
+  const { L, cue } = cur.item, fb = cur.phase === 'fb', showObjs = cur.phase !== 'cue';
+  let s = sitesSVG(cue, true);
   if (showObjs) {
     const objs = L.objects.slice().sort((a, b) => b.u - a.u), site = SITES[cue];
     const canCheck = cur.phase === 'go' && cur.reveals.length < MAX_CHECKS;
@@ -340,8 +382,13 @@ document.addEventListener('keydown', e => {
   if (k === 'f') respond('fits'); else if (k === 'j') respond('collides');
 });
 
-$('b-begin').onclick = () => show('s-instr');
-$('b-practice').onclick = () => { queue = buildPractice().map(p => ({ ...p, practice: true })); idx = 0; show('s-trial'); startTrial(); };
+$('b-begin').onclick = () => { tutStep = 0; tutDraw(); show('s-instr'); };
+$('tut-back').onclick = () => { if (tutStep > 0) { tutStep--; tutDraw(); } };
+$('tut').addEventListener('click', tutCheck);
+$('tut').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tutCheck(e); } });
+$('tut-next').onclick = () => {
+  if (!TUT[tutStep].last) { tutStep++; tutDraw(); return; }
+  queue = buildPractice().map(p => ({ ...p, practice: true })); idx = 0; show('s-trial'); startTrial(); };
 $('b-main').onclick = () => {
   queue = shuffle(buildLayouts().map((L, i) => ({ L, cue: cueFor(i, group), practice: false })));
   idx = 0; show('s-trial'); startTrial();
